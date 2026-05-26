@@ -1,5 +1,9 @@
 FROM mcr.microsoft.com/devcontainers/rust:1-1-bullseye
 
+LABEL org.opencontainers.image.source="https://github.com/ohj-perus-jy/ohj-mdbook-tooling"
+LABEL org.opencontainers.image.description="Shared mdBook tooling image for Ohjelmointi course material repositories"
+LABEL org.opencontainers.image.licenses="MIT"
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN apt-get update \
