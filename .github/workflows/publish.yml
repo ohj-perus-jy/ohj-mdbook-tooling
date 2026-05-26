@@ -1,5 +1,6 @@
 name: Publish image
 
+# Builds the shared mdBook tooling image and publishes it to GHCR.
 on:
   push:
     branches:
