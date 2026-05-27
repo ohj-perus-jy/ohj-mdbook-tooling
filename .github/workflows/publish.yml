@@ -1,15 +1,10 @@
 name: Publish image
 
-# Builds the shared mdBook tooling image and publishes it to GHCR.
 on:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +14,6 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,20 +29,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/ohj-perus-jy/ohj-mdbook-tooling
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha,prefix=sha-
-
-      - name: Build and publish
+      - name: Build and push Dev Container
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: devcontainer
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:devcontainer
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:devcontainer-latest
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:devcontainer-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Runner
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: mdbook-runner
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:runner
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:runner-latest
+            ghcr.io/ohj-perus-jy/ohj-mdbook-tooling:runner-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

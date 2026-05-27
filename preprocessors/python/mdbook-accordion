@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+# Resolve the absolute directory of this script, following symlinks if necessary
+TARGET="$0"
+while [ -L "$TARGET" ]; do
+  DIR="$(dirname "$TARGET")"
+  TARGET="$(readlink "$TARGET")"
+  case "$TARGET" in
+    /*) ;;
+    *) TARGET="$DIR/$TARGET" ;;
+  esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "$TARGET")" && pwd)"
+
+export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 "$SCRIPT_DIR/accordion.py" "$@"
