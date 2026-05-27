@@ -35,6 +35,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         python3 \
+        tini \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/cargo/bin/mdbook* /usr/local/bin/
@@ -44,7 +45,7 @@ RUN chmod +x /opt/mdbook-preprocessors/mdbook-accordion \
 
 VOLUME ["/workspace"]
 WORKDIR /workspace
-ENTRYPOINT [ "mdbook" ]
+ENTRYPOINT [ "/usr/bin/tini", "--", "mdbook" ]
 
 # Devcontainer stage
 # This stage is used for the devcontainer, which can be used for working with ohj1/ohj2 materials
