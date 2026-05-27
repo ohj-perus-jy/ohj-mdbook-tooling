@@ -42,7 +42,6 @@ COPY preprocessors/python /opt/mdbook-preprocessors
 RUN chmod +x /opt/mdbook-preprocessors/mdbook-accordion \
     && ln -s /opt/mdbook-preprocessors/mdbook-accordion /usr/local/bin
 
-USER 1000
 VOLUME ["/workspace"]
 WORKDIR /workspace
 ENTRYPOINT [ "mdbook" ]
