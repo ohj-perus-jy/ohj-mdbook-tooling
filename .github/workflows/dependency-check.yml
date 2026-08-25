@@ -1,0 +1,90 @@
+name: Check preprocessor dependencies
+
+# The image builds mdbook-codeblock-tabs with `cargo install --locked`, so
+# dependency fixes never reach it on their own. Once a month this job asks Cargo
+# whether Cargo.lock has fallen behind, and opens an issue when it has. Nothing
+# is committed automatically -- a human decides when to take the update.
+#
+# NOTE: GitHub disables scheduled workflows in repositories that have seen no
+# activity for 60 days. If the monthly run stops appearing, re-enable it from
+# the Actions tab.
+
+on:
+  schedule:
+    - cron: '0 6 1 * *' # 06:00 UTC on the first of each month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  CRATE_DIR: preprocessors/rust/mdbook-codeblock-tabs
+  ISSUE_TITLE: 'chore: mdbook-codeblock-tabs dependency updates available'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve newest compatible dependency versions
+        run: |
+          set -o pipefail
+          docker run --rm \
+            -v "$PWD/$CRATE_DIR":/app \
+            -w /app \
+            -u "$(id -u):$(id -g)" \
+            -e CARGO_HOME=/tmp/cargo-home \
+            -e HOME=/tmp \
+            rust:bookworm cargo update 2>&1 | tee cargo-update.log
+
+      - name: Detect whether Cargo.lock changed
+        id: diff
+        run: |
+          if git diff --quiet -- "$CRATE_DIR/Cargo.lock"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Cargo.lock is already at the newest compatible versions."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- "$CRATE_DIR/Cargo.lock"
+          fi
+
+      - name: Open an issue if updates are available
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          README_ANCHOR: https://github.com/${{ github.repository }}/blob/main/README.md#updating-the-preprocessor-dependencies
+        run: |
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq "[.[] | select(.title == \"$ISSUE_TITLE\") | .number] | first // empty")
+          if [ -n "$existing" ]; then
+            echo "Issue #$existing is already open; not filing a duplicate."
+            exit 0
+          fi
+
+          {
+            echo "Newer semver-compatible versions are available for the"
+            echo "\`mdbook-codeblock-tabs\` preprocessor. Because the image is built with"
+            echo "\`cargo install --locked\`, they do **not** reach the published images"
+            echo "until \`Cargo.lock\` is refreshed and committed in this repository."
+            echo
+            echo "### What Cargo would change"
+            echo
+            echo '```'
+            grep -E '^[[:space:]]+(Updating|Adding|Removing|Downgrading) ' cargo-update.log \
+              | grep -v 'crates.io index' \
+              || cat cargo-update.log
+            echo '```'
+            echo
+            echo "### How to apply"
+            echo
+            echo "See [Updating the Preprocessor Dependencies]($README_ANCHOR) in the README."
+            echo "Nothing here is urgent by itself -- check whether any of the above is a"
+            echo "security fix, and otherwise fold it into the next maintenance round."
+            echo
+            echo "_Filed automatically by \`.github/workflows/dependency-check.yml\`._"
+          } > issue-body.md
+
+          gh issue create --title "$ISSUE_TITLE" --body-file issue-body.md

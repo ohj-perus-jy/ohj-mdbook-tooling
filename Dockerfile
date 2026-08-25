@@ -21,7 +21,7 @@ RUN cargo install \
     && cargo install \
         --git https://github.com/boozook/mdbook-svgbob.git \
         --rev 3431f100c08eeca8b132241d0c372ec0f4aed85b \
-    && cargo install --path /tmp/preprocessors/rust/mdbook-codeblock-tabs
+    && cargo install --locked --path /tmp/preprocessors/rust/mdbook-codeblock-tabs
 
 # Runner stage
 # This stage is used for the runner image, which can be used for running mdbook build via ci or command line
